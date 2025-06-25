@@ -14,7 +14,7 @@ openai.api_key = OPENAI_API_KEY
 def home():
     return "iah! is running"
 
-@app.route(f'/{TELEGRAM_TOKEN}', methods=['POST'])
+@app.route('/webhook', methods=['POST'])
 def telegram_webhook():
     data = request.get_json()
     message = data.get('message', {}).get('text')
@@ -22,7 +22,7 @@ def telegram_webhook():
 
     if message:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # usa "gpt-4" si tu cuenta lo permite
+            model="gpt-3.5-turbo",  # Cambia por gpt-4 si tu API lo permite
             messages=[
                 {"role": "system", "content": "Eres iah!, un asistente AI divertido, sexy y cariñoso. Aconsejas, entretienes y respondes con picardía y humor dependiendo de la persona que escribe."},
                 {"role": "user", "content": message}
