@@ -4,62 +4,50 @@ import requests
 from flask import Flask, request
 import openai
 
-# Configuración para OpenRouter
-openai.api_key = os.getenv("OPENROUTER_API_KEY")
-openai.api_base = "https://openrouter.ai/api/v1"
-
 app = Flask(__name__)
 
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+# Configura OpenRouter
+openai.api_key = os.getenv("OPENROUTER_API_KEY")
+openai.base_url = "https://openrouter.ai/api/v1"
 
-@app.route('/')
+@app.route("/")
 def home():
-    return 'iah! está funcionando 🚀'
+    return "Bot IA 🤖 está vivo"
 
-@app.route('/webhook', methods=['POST'])
+@app.route("/webhook", methods=["POST"])
 def telegram_webhook():
-    try:
-        data = request.json
-        print("\n📥 DATOS RECIBIDOS DE TELEGRAM:\n")
-        print(json.dumps(data, indent=4))
+    data = request.json
+    print("📥 DATOS RECIBIDOS DE TELEGRAM:")
+    print(json.dumps(data, indent=4))
 
-        message = data.get("message", {})
-        chat_id = message.get("chat", {}).get("id")
-        user_message = message.get("text", "")
+    if "message" in data and "text" in data["message"]:
+        chat_id = data["message"]["chat"]["id"]
+        user_message = data["message"]["text"]
 
-        print(f"\n✅ Mensaje: {user_message} | Chat ID: {chat_id}\n")
+        try:
+            # ✅ Llama a OpenRouter con la nueva forma
+            response = openai.chat.completions.create(
+                model="openai/gpt-3.5-turbo",
+                messages=[{"role": "user", "content": user_message}],
+            )
 
-        # Llamada al modelo de OpenRouter (GPT-3.5 o el que elijas)
-        response = openai.ChatCompletion.create(
-            model="openai/gpt-3.5-turbo",  # o prueba "mistralai/mixtral-8x7b"
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Eres iah!, un asistente AI divertido, pícaro y cálido experto en amor y sexo."
-                },
-                {
-                    "role": "user",
-                    "content": user_message
-                }
-            ]
-        )
+            ai_response = response.choices[0].message.content.strip()
 
-        reply = response.choices[0].message.content.strip()
+            # ✅ Envía la respuesta al usuario en Telegram
+            send_telegram_message(chat_id, ai_response)
 
-        payload = {
-            "chat_id": chat_id,
-            "text": reply
-        }
+        except Exception as e:
+            print("❌ ERROR:")
+            print(e)
+            send_telegram_message(chat_id, "⚠️ Error: no he podido responder.")
 
-        requests.post(TELEGRAM_API_URL, json=payload)
+    return "OK"
 
-        return "OK", 200
+def send_telegram_message(chat_id, text):
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text}
+    requests.post(url, json=payload)
 
-    except Exception as e:
-        print(f"\n❌ ERROR:\n\n{str(e)}\n")
-        return "ERROR", 200
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
