@@ -21,7 +21,7 @@ def telegram_webhook():
         chat_id = data["message"]["chat"]["id"]
         user_message = data["message"]["text"]
 
-        # Mensaje para enviar a OpenRouter
+        # Mensaje para enviar a OpenRouter (GPT-3.5 Turbo)
         headers = {
             "Authorization": f"Bearer {OPENROUTER_API_KEY}",
             "Content-Type": "application/json"
@@ -36,26 +36,21 @@ def telegram_webhook():
         }
 
         print("📡 Enviando mensaje a OpenRouter...")
-        response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json=payload,
-            timeout=10
-        )
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=10)
+
         result = response.json()
         print("✅ RESPUESTA DE OPENROUTER:\n", result)
 
         ai_reply = result["choices"][0]["message"]["content"]
 
-        # Enviar respuesta a Telegram
+        # Enviar mensaje a Telegram
         telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
         message_data = {
             "chat_id": chat_id,
             "text": ai_reply
         }
-
         telegram_response = requests.post(telegram_url, json=message_data)
-        print("📤 RESPUESTA DE TELEGRAM:", telegram_response.status_code, telegram_response.text)
+        print("✅ RESPUESTA ENVIADA A TELEGRAM")
 
     except Exception as e:
         print("❌ ERROR en el webhook:", e)
