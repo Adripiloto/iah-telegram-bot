@@ -1,53 +1,58 @@
-import os
-import json
-import requests
 from flask import Flask, request
-import openai
+import requests
+import os
 
 app = Flask(__name__)
 
-# Configura OpenRouter
-openai.api_key = os.getenv("OPENROUTER_API_KEY")
-openai.base_url = "https://openrouter.ai/api/v1"
+# Configura tus tokens como variables de entorno
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-@app.route("/")
+@app.route('/')
 def home():
-    return "Bot IA 🤖 está vivo"
+    return 'Bot IA 🤖 está vivo'
 
-@app.route("/webhook", methods=["POST"])
+@app.route('/webhook', methods=['POST'])
 def telegram_webhook():
-    data = request.json
-    print("📥 DATOS RECIBIDOS DE TELEGRAM:")
-    print(json.dumps(data, indent=4))
+    data = request.get_json()
+    print("📥 DATOS RECIBIDOS DE TELEGRAM:\n", data)
 
-    if "message" in data and "text" in data["message"]:
+    try:
         chat_id = data["message"]["chat"]["id"]
         user_message = data["message"]["text"]
 
-        try:
-            # ✅ Llama a OpenRouter con la nueva forma
-            response = openai.chat.completions.create(
-                model="openai/gpt-3.5-turbo",
-                messages=[{"role": "user", "content": user_message}],
-            )
+        # Mensaje para enviar a OpenRouter (GPT-3.5 Turbo)
+        headers = {
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json"
+        }
 
-            ai_response = response.choices[0].message.content.strip()
+        payload = {
+            "model": "openai/gpt-3.5-turbo",
+            "messages": [
+                {"role": "system", "content": "Eres un asistente amistoso y útil."},
+                {"role": "user", "content": user_message}
+            ]
+        }
 
-            # ✅ Envía la respuesta al usuario en Telegram
-            send_telegram_message(chat_id, ai_response)
+        print("📡 Enviando mensaje a OpenRouter...")
+        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload, timeout=10)
 
-        except Exception as e:
-            print("❌ ERROR:")
-            print(e)
-            send_telegram_message(chat_id, "⚠️ Error: no he podido responder.")
+        result = response.json()
+        print("✅ RESPUESTA DE OPENROUTER:\n", result)
+
+        ai_reply = result["choices"][0]["message"]["content"]
+
+        # Enviar mensaje a Telegram
+        telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        message_data = {
+            "chat_id": chat_id,
+            "text": ai_reply
+        }
+        telegram_response = requests.post(telegram_url, json=message_data)
+        print("✅ RESPUESTA ENVIADA A TELEGRAM")
+
+    except Exception as e:
+        print("❌ ERROR en el webhook:", e)
 
     return "OK"
-
-def send_telegram_message(chat_id, text):
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text}
-    requests.post(url, json=payload)
-
-if __name__ == "__main__":
-    app.run(debug=True)
