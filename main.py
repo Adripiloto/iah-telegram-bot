@@ -60,4 +60,4 @@ def telegram_webhook():
     except Exception as e:
         print("❌ ERROR en el webhook:", e)
 
-    return "OK"
+    return "OK", 200
