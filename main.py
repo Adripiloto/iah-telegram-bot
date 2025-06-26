@@ -1,55 +1,65 @@
 import os
-from flask import Flask, request
+import json
 import requests
-import traceback
-from openai import OpenAI
+from flask import Flask, request
+import openai
+
+# Configuración para OpenRouter
+openai.api_key = os.getenv("OPENROUTER_API_KEY")
+openai.api_base = "https://openrouter.ai/api/v1"
 
 app = Flask(__name__)
 
-TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-
-client = OpenAI(api_key=OPENAI_API_KEY)
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 @app.route('/')
 def home():
-    return "iah! is running"
+    return 'iah! está funcionando 🚀'
 
 @app.route('/webhook', methods=['POST'])
 def telegram_webhook():
     try:
-        data = request.get_json()
-        print("📥 DATOS RECIBIDOS DE TELEGRAM:\n", data)
+        data = request.json
+        print("\n📥 DATOS RECIBIDOS DE TELEGRAM:\n")
+        print(json.dumps(data, indent=4))
 
-        message = data.get('message', {}).get('text')
-        chat_id = data.get('message', {}).get('chat', {}).get('id')
+        message = data.get("message", {})
+        chat_id = message.get("chat", {}).get("id")
+        user_message = message.get("text", "")
 
-        if message and chat_id:
-            print(f"✅ Mensaje: {message} | Chat ID: {chat_id}")
+        print(f"\n✅ Mensaje: {user_message} | Chat ID: {chat_id}\n")
 
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "Eres iah!, un asistente AI divertido, sexy y cariñoso. Aconsejas, entretienes y respondes con picardía y humor dependiendo de la persona que escribe."},
-                    {"role": "user", "content": message}
-                ]
-            )
+        # Llamada al modelo de OpenRouter (GPT-3.5 o el que elijas)
+        response = openai.ChatCompletion.create(
+            model="openai/gpt-3.5-turbo",  # o prueba "mistralai/mixtral-8x7b"
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Eres iah!, un asistente AI divertido, pícaro y cálido experto en amor y sexo."
+                },
+                {
+                    "role": "user",
+                    "content": user_message
+                }
+            ]
+        )
 
-            reply = response.choices[0].message.content
-            print("💬 Respuesta generada:", reply)
+        reply = response.choices[0].message.content.strip()
 
-            send_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-            telegram_response = requests.post(send_url, json={
-                "chat_id": chat_id,
-                "text": reply
-            })
+        payload = {
+            "chat_id": chat_id,
+            "text": reply
+        }
 
-            print("📤 Resultado de enviar mensaje:", telegram_response.status_code, telegram_response.text)
-        else:
-            print("⚠️ No se encontró texto o chat_id.")
+        requests.post(TELEGRAM_API_URL, json=payload)
 
-    except Exception:
-        print("❌ ERROR:")
-        traceback.print_exc()
+        return "OK", 200
 
-    return "ok"
+    except Exception as e:
+        print(f"\n❌ ERROR:\n\n{str(e)}\n")
+        return "ERROR", 200
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
