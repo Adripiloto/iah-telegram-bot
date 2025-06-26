@@ -28,7 +28,7 @@ def telegram_webhook():
         }
 
         payload = {
-            "model": "openai/gpt-3.5-turbo",
+            "model": "mistralai/mistral-7b-instruct:free",
             "messages": [
                 {"role": "system", "content": "Eres un asistente amistoso y útil."},
                 {"role": "user", "content": user_message}
