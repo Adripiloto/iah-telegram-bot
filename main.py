@@ -44,7 +44,7 @@ def telegram_webhook():
         ai_reply = result["choices"][0]["message"]["content"]
 
         # Enviar mensaje a Telegram
-        telegram_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        telegram_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         message_data = {
             "chat_id": chat_id,
             "text": ai_reply
